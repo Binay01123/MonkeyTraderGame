@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Monkey Trader 2.0</title>
+    <style>
+        body {
+            background-color: #fffbcc;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #monkey {
+            font-size: 120px;
+            position: absolute;
+            top: 20%;
+            z-index: 2;
+            transform-origin: center;
+        }
+
+        .rotate {
+            animation: rotateMonkey 2s linear infinite;
+        }
+
+        @keyframes rotateMonkey {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #command {
+            font-size: 80px;
+            padding: 20px 40px;
+            border-radius: 20px;
+            background-color: #6c757d;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            text-align: center;
+            min-width: 400px;
+            position: relative;
+            z-index: 1;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #stopButton {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background-color: #dc3545;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 20px;
+            color: white;
+            border: none;
+            z-index: 999;
+            display: none;
+        }
+
+        .BUY { background-color: #28a745 !important; }
+        .EXIT { background-color: #ffc107 !important; }
+        .SHORT { background-color: #dc3545 !important; }
+        .thinking {
+            background-color: #6c757d !important;
+            font-size: 50px;
+        }
+
+        .banana {
+            font-size: 50px;
+            opacity: 0.2;
+            position: absolute;
+            animation: float 8s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-100px) rotate(180deg); }
+            100% { transform: translateY(0) rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="monkey">🐵</div>
+    <div id="command">Click to Start!</div>
+    <button id="stopButton">Stop Monkeying!</button>
+
+    <script>
+        const state = {
+            isRunning: false,
+            timers: [],
+        };
+
+        const commandEl = document.getElementById('command');
+        const monkeyEl = document.getElementById('monkey');
+        const stopButton = document.getElementById('stopButton');
+
+        // Helper to generate a random float between min and max
+        function randomBetween(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        // Show the rotating monkey + "Thinking" text for a random duration
+        function doThinking(minSec, maxSec, callback) {
+            monkeyEl.textContent = '🙈';
+            monkeyEl.classList.add('rotate');
+            commandEl.className = 'thinking';
+
+            let dots = 0;
+            const dotInterval = setInterval(() => {
+                dots = (dots + 1) % 4;
+                commandEl.textContent = 'Thinking' + '.'.repeat(dots);
+            }, 500);
+            state.timers.push(dotInterval);
+
+            const thinkingTime = randomBetween(minSec, maxSec) * 1000;
+            const timeoutId = setTimeout(() => {
+                clearInterval(dotInterval);
+                monkeyEl.classList.remove('rotate');
+                if (typeof callback === 'function' && state.isRunning) {
+                    callback();
+                }
+            }, thinkingTime);
+            state.timers.push(timeoutId);
+        }
+
+        // Show a given action for a fixed duration in seconds
+        function doAction(action, seconds, callback) {
+            monkeyEl.textContent = '🙉';
+            monkeyEl.classList.remove('rotate');
+            commandEl.textContent = action;
+            commandEl.className = action;
+
+            const timeoutId = setTimeout(() => {
+                if (typeof callback === 'function' && state.isRunning) {
+                    callback();
+                }
+            }, seconds * 1000);
+            state.timers.push(timeoutId);
+        }
+
+        // Main cycle
+        function cycle() {
+            if (!state.isRunning) return;
+            // 1) Thinking (5-10s)
+            doThinking(5, 10, () => {
+                if (!state.isRunning) return;
+                // 2) BUY or SHORT for 5s
+                const action = Math.random() < 0.5 ? 'BUY' : 'SHORT';
+                doAction(action, 5, () => {
+                    if (!state.isRunning) return;
+                    // 3) Thinking again (10-20s)
+                    doThinking(10, 20, () => {
+                        if (!state.isRunning) return;
+                        // 4) EXIT for 5s
+                        doAction('EXIT', 5, () => {
+                            if (!state.isRunning) return;
+                            // Repeat
+                            cycle();
+                        });
+                    });
+                });
+            });
+        }
+
+        function startGame() {
+            if (!state.isRunning) {
+                state.isRunning = true;
+                stopButton.style.display = 'block';
+                commandEl.style.cursor = 'default';
+                cycle();
+            }
+        }
+
+        function stopGame() {
+            state.isRunning = false;
+            // Clear all intervals/timeouts
+            state.timers.forEach((id) => {
+                clearInterval(id);
+                clearTimeout(id);
+            });
+            state.timers = [];
+
+            commandEl.textContent = 'Click to Start!';
+            commandEl.className = '';
+            commandEl.style.cursor = 'pointer';
+            monkeyEl.textContent = '🐵';
+            monkeyEl.classList.remove('rotate');
+            stopButton.style.display = 'none';
+        }
+
+        // Initialize floating bananas
+        for (let i = 0; i < 12; i++) {
+            const banana = document.createElement('div');
+            banana.className = 'banana';
+            banana.style.top = Math.random() * 100 + '%';
+            banana.style.left = Math.random() * 100 + '%';
+            banana.textContent = '🍌';
+            document.body.appendChild(banana);
+        }
+
+        commandEl.addEventListener('click', startGame);
+        stopButton.addEventListener('click', stopGame);
+    </script>
+</body>
+</html>
