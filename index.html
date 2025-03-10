@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <script defer data-domain="binay01123.github.io/monkeytradergame" src="https://plausible.io/js/script.js"></script>
     <title>Monkey Trader 2.0</title>
+      <script defer data-domain="binay01123.github.io/monkeytradergame" src="https://plausible.io/js/script.js"></script>
     <style>
         body {
             background-color: #fffbcc;
-            font-family: 'Comic Sans MS', cursive, sans-serif;
+            font-family: 'Arial', cursive, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -46,7 +46,7 @@
         }
 
         #command {
-            font-size: 80px;
+            font-size: 65px;
             padding: 20px 40px;
             border-radius: 20px;
             background-color: #6c757d;
@@ -162,11 +162,11 @@
     <div id="freqContainer">
         <label for="frequencySelect">Frequency</label>
         <select id="frequencySelect">
-            <option value="" selected>Choose Frequency...</option>
-            <option value="High">High (10-20s)</option>
-            <option value="Medium">Medium (40-80s)</option>
-            <option value="Low">Low (180-300s)</option>
-        </select>
+    <option value="" selected>Choose Frequency...</option>
+    <option value="High">High <span style="font-size:12px; color:grey;">(~200 trades/hour)</span></option>
+    <option value="Medium">Medium <span style="font-size:12px; color:grey;">(~50 trades/hour)</span></option>
+    <option value="Low">Low <span style="font-size:12px; color:grey;">(~10 trades/hour)</span></option>
+</select>
         <div id="frequencyError">Please select a frequency before starting.</div>
     </div>
 
