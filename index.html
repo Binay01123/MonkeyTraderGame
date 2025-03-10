@@ -1,20 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script defer data-domain="binay01123.github.io/monkeytradergame" src="https://plausible.io/js/script.js"></script>
     <meta charset="UTF-8">
+    <script defer data-domain="binay01123.github.io/monkeytradergame" src="https://plausible.io/js/script.js"></script>
     <title>Monkey Trader 2.0</title>
     <style>
         body {
             background-color: #fffbcc;
             font-family: 'Comic Sans MS', cursive, sans-serif;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
             margin: 0;
             overflow: hidden;
             position: relative;
+        }
+
+        :root {
+            /* Default rotate speed if frequency is not set. */
+            --rotateSpeed: 2s;
         }
 
         #monkey {
@@ -25,13 +31,18 @@
             transform-origin: center;
         }
 
-        .rotate {
-            animation: rotateMonkey 2s linear infinite;
+        /* We use the variable --rotateSpeed for animation-duration */
+        #monkey.rotate {
+            animation: rotateMonkey var(--rotateSpeed) linear infinite;
         }
 
         @keyframes rotateMonkey {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         #command {
@@ -48,27 +59,74 @@
             transition: background-color 0.3s ease;
         }
 
-        #stopButton {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            padding: 10px 20px;
-            background-color: #dc3545;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 20px;
-            color: white;
-            border: none;
-            z-index: 999;
-            display: none;
+        #freqContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: transform 0.6s ease, opacity 0.6s ease;
         }
 
-        .BUY { background-color: #28a745 !important; }
-        .EXIT { background-color: #ffc107 !important; }
-        .SHORT { background-color: #dc3545 !important; }
-        .thinking {
-            background-color: #6c757d !important;
-            font-size: 50px;
+        #freqContainer.fancy {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        #frequencySelect {
+            font-size: 16px;
+            padding: 8px;
+            margin-top: 8px;
+            border-radius: 8px;
+            outline: none;
+            border: 1px solid #ccc;
+            transition: box-shadow 0.3s ease;
+        }
+        #frequencySelect:focus {
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        #frequencyError {
+            display: none;
+            color: red;
+            margin-top: 5px;
+            font-family: sans-serif;
+        }
+
+        .highlight {
+            border: 2px solid red;
+        }
+
+        /* Move Stop button to top middle with a nicer style */
+        #stopButton {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 14px 28px;
+            background: linear-gradient(45deg, #ff8a00, #e52e71);
+            border-radius: 8px;
+            font-size: 20px;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+
+            display: none;
+            z-index: 9999;
+        }
+        
+
+        /* Action classes */
+        .BUY {
+            background-color: #28a745 !important;
+        }
+        .EXIT {
+            background-color: #ffc107 !important;
+        }
+        .SHORT {
+            background-color: #dc3545 !important;
         }
 
         .banana {
@@ -79,16 +137,38 @@
         }
 
         @keyframes float {
-            0% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-100px) rotate(180deg); }
-            100% { transform: translateY(0) rotate(360deg); }
+            0% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-100px) rotate(180deg);
+            }
+            100% {
+                transform: translateY(0) rotate(360deg);
+            }
         }
     </style>
 </head>
 <body>
     <div id="monkey">🐵</div>
-    <div id="command">Click to Start!</div>
+
+    <!-- Stop Button at the top middle -->
     <button id="stopButton">Stop Monkeying!</button>
+
+    <!-- Main Button -->
+    <div id="command">Click to Start!</div>
+
+    <!-- Frequency Selection -->
+    <div id="freqContainer">
+        <label for="frequencySelect">Frequency</label>
+        <select id="frequencySelect">
+            <option value="" selected>Choose Frequency...</option>
+            <option value="High">High (10-20s)</option>
+            <option value="Medium">Medium (40-80s)</option>
+            <option value="Low">Low (180-300s)</option>
+        </select>
+        <div id="frequencyError">Please select a frequency before starting.</div>
+    </div>
 
     <script>
         const state = {
@@ -97,16 +177,64 @@
         };
 
         const commandEl = document.getElementById('command');
+        const freqContainerEl = document.getElementById('freqContainer');
         const monkeyEl = document.getElementById('monkey');
         const stopButton = document.getElementById('stopButton');
+        const frequencySelect = document.getElementById('frequencySelect');
+        const frequencyError = document.getElementById('frequencyError');
+
+        // Show the frequency container with a fancy animation
+        window.addEventListener('DOMContentLoaded', () => {
+            // Add a short delay to allow DOM to render
+            setTimeout(() => {
+                freqContainerEl.classList.add('fancy');
+            }, 100);
+        });
 
         // Helper to generate a random float between min and max
         function randomBetween(min, max) {
             return Math.random() * (max - min) + min;
         }
 
+        // Get the [min, max] range based on frequency selection
+        function getFrequencyRange() {
+            switch (frequencySelect.value) {
+                case 'High':
+                    return [10, 20];
+                case 'Medium':
+                    return [40, 80];
+                case 'Low':
+                    return [180, 300];
+                default:
+                    // fallback if none chosen, though we will handle error earlier.
+                    return [10, 20];
+            }
+        }
+
+        // Adjust the rotate speed based on the frequency
+        function setRotateSpeed() {
+            let speed;
+            switch (frequencySelect.value) {
+                case 'High':
+                    speed = '1s';
+                    break;
+                case 'Medium':
+                    speed = '2s';
+                    break;
+                case 'Low':
+                    speed = '3s';
+                    break;
+                default:
+                    speed = '2s';
+            }
+            document.documentElement.style.setProperty('--rotateSpeed', speed);
+        }
+
         // Show the rotating monkey + "Thinking" text for a random duration
         function doThinking(minSec, maxSec, callback) {
+            // apply current rotate speed
+            setRotateSpeed();
+
             monkeyEl.textContent = '🙈';
             monkeyEl.classList.add('rotate');
             commandEl.className = 'thinking';
@@ -131,6 +259,7 @@
 
         // Show a given action for a fixed duration in seconds
         function doAction(action, seconds, callback) {
+            // rotate is off during an action
             monkeyEl.textContent = '🙉';
             monkeyEl.classList.remove('rotate');
             commandEl.textContent = action;
@@ -154,8 +283,9 @@
                 const action = Math.random() < 0.5 ? 'BUY' : 'SHORT';
                 doAction(action, 5, () => {
                     if (!state.isRunning) return;
-                    // 3) Thinking again (10-20s)
-                    doThinking(10, 20, () => {
+                    // 3) Thinking again, range depends on frequency
+                    const [minFreq, maxFreq] = getFrequencyRange();
+                    doThinking(minFreq, maxFreq, () => {
                         if (!state.isRunning) return;
                         // 4) EXIT for 5s
                         doAction('EXIT', 5, () => {
@@ -169,10 +299,22 @@
         }
 
         function startGame() {
+            // If user hasn't chosen frequency, show error message
+            if (!frequencySelect.value) {
+                frequencyError.style.display = 'block';
+                frequencySelect.classList.add('highlight');
+                return;
+            }
+            // Otherwise hide error if it was showing previously
+            frequencyError.style.display = 'none';
+            frequencySelect.classList.remove('highlight');
+
             if (!state.isRunning) {
                 state.isRunning = true;
                 stopButton.style.display = 'block';
                 commandEl.style.cursor = 'default';
+                // Disable frequency dropdown
+                frequencySelect.disabled = true;
                 cycle();
             }
         }
@@ -192,7 +334,16 @@
             monkeyEl.textContent = '🐵';
             monkeyEl.classList.remove('rotate');
             stopButton.style.display = 'none';
+            frequencySelect.disabled = false;
         }
+
+        // Hide error if frequency changes
+        frequencySelect.addEventListener('change', () => {
+            if (frequencySelect.value) {
+                frequencyError.style.display = 'none';
+                frequencySelect.classList.remove('highlight');
+            }
+        });
 
         // Initialize floating bananas
         for (let i = 0; i < 12; i++) {
